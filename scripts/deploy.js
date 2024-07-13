@@ -1,27 +1,14 @@
+const { ethers } = require("hardhat");
 const path = require("path");
 
 async function main() {
-  // This is just a convenience check
-  if (network.name === "hardhat") {
-    console.warn(
-      "You are trying to deploy a contract to the Hardhat Network, which" +
-        "gets automatically created and destroyed every time. Use the Hardhat" +
-        " option '--network localhost'"
-    );
-  }
-
-  // ethers is available in the global scope
   const [deployer] = await ethers.getSigners();
-  console.log(
-    "Deploying the contracts with the account:",
-    await deployer.getAddress()
-  );
-
+  console.log("Deploying the contracts with the account:", await deployer.getAddress());
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   // Deploy ERC20 Token contract
-  const Token = await ethers.getContractFactory("Token");
-  const token = await Token.deploy();
+  const Token = await ethers.getContractFactory("MyToken");
+  const token = await Token.deploy(1000000);
   await token.deployed();
   console.log("Token address:", token.address);
 
@@ -43,19 +30,17 @@ function saveFrontendFiles(token, cryptoPet) {
     fs.mkdirSync(contractsDir);
   }
 
-  // Save Token contract address and ABI
   fs.writeFileSync(
     path.join(contractsDir, "contract-address.json"),
     JSON.stringify({ Token: token.address, CryptoPet: cryptoPet.address }, undefined, 2)
   );
 
-  const TokenArtifact = artifacts.readArtifactSync("Token");
+  const TokenArtifact = artifacts.readArtifactSync("MyToken");
   fs.writeFileSync(
-    path.join(contractsDir, "Token.json"),
+    path.join(contractsDir, "MyToken.json"),
     JSON.stringify(TokenArtifact, null, 2)
   );
 
-  // Save CryptoPet contract ABI
   const CryptoPetArtifact = artifacts.readArtifactSync("CryptoPet");
   fs.writeFileSync(
     path.join(contractsDir, "CryptoPet.json"),
