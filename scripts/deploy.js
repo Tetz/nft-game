@@ -1,6 +1,3 @@
-// This is a script for deploying your contracts. You can adapt it to deploy
-// yours, or create new ones.
-
 const path = require("path");
 
 async function main() {
@@ -22,17 +19,23 @@ async function main() {
 
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
+  // Deploy ERC20 Token contract
   const Token = await ethers.getContractFactory("Token");
   const token = await Token.deploy();
   await token.deployed();
-
   console.log("Token address:", token.address);
 
-  // We also save the contract's artifacts and address in the frontend directory
-  saveFrontendFiles(token);
+  // Deploy CryptoPet contract
+  const CryptoPet = await ethers.getContractFactory("CryptoPet");
+  const cryptoPet = await CryptoPet.deploy();
+  await cryptoPet.deployed();
+  console.log("CryptoPet address:", cryptoPet.address);
+
+  // Save the contract's artifacts and address in the frontend directory
+  saveFrontendFiles(token, cryptoPet);
 }
 
-function saveFrontendFiles(token) {
+function saveFrontendFiles(token, cryptoPet) {
   const fs = require("fs");
   const contractsDir = path.join(__dirname, "..", "frontend", "src", "contracts");
 
@@ -40,16 +43,23 @@ function saveFrontendFiles(token) {
     fs.mkdirSync(contractsDir);
   }
 
+  // Save Token contract address and ABI
   fs.writeFileSync(
     path.join(contractsDir, "contract-address.json"),
-    JSON.stringify({ Token: token.address }, undefined, 2)
+    JSON.stringify({ Token: token.address, CryptoPet: cryptoPet.address }, undefined, 2)
   );
 
   const TokenArtifact = artifacts.readArtifactSync("Token");
-
   fs.writeFileSync(
     path.join(contractsDir, "Token.json"),
     JSON.stringify(TokenArtifact, null, 2)
+  );
+
+  // Save CryptoPet contract ABI
+  const CryptoPetArtifact = artifacts.readArtifactSync("CryptoPet");
+  fs.writeFileSync(
+    path.join(contractsDir, "CryptoPet.json"),
+    JSON.stringify(CryptoPetArtifact, null, 2)
   );
 }
 
