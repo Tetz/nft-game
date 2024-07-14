@@ -9,6 +9,12 @@ import MyTokenABI from '../contracts/MyToken.json';
 const pixelSize = 10; // 10x10 pixel grid
 const scale = 10; // scale each pixel to 10x10
 
+const colors = [
+  '#FF5733', '#33FF57', '#3357FF', '#F0E68C', '#FFC0CB', 
+  '#8A2BE2', '#FFD700', '#FF4500', '#7CFC00', '#00FFFF', 
+  '#8B008B', '#FF1493', '#4B0082', '#ADFF2F', '#FFDAB9', '#FF69B4'
+]; // Array of colors
+
 const decodePixelData = (pixelData) => {
   const canvas = document.createElement('canvas');
   canvas.width = pixelSize * scale;
@@ -18,12 +24,21 @@ const decodePixelData = (pixelData) => {
   for (let i = 0; i < pixelData.length; i++) {
     const x = i % pixelSize;
     const y = Math.floor(i / pixelSize);
-    ctx.fillStyle = pixelData[i] === '1' ? '#000000' : '#FFFFFF';
+    ctx.fillStyle = colors[pixelData[i] % colors.length]; // Use the pixel data value to index into the colors array
     ctx.fillRect(x * scale, y * scale, scale, scale);
   }
 
+  // Adding eyes
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(2 * scale, 2 * scale, scale, scale);
+  ctx.fillRect(7 * scale, 2 * scale, scale, scale);
+
+  // Adding mouth
+  ctx.fillRect(4 * scale, 7 * scale, 3 * scale, scale);
+
   return canvas.toDataURL();
 };
+
 
 export const Dapp = () => {
   const [account, setAccount] = useState('');

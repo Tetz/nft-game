@@ -68,13 +68,15 @@ contract CryptoPet {
         return (pet.name, pet.level, pet.lastFed, pet.lastPlayed, pet.pixelData);
     }
 
+
     function generateRandomPixelData() internal view returns (bytes memory) {
         bytes memory pixelData = new bytes(100); // 10x10 pixel grid
         for (uint i = 0; i < 100; i++) {
-            pixelData[i] = bytes1(uint8(uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, i))) % 2 == 0 ? 0 : 1));
+            pixelData[i] = bytes1(uint8(uint(keccak256(abi.encodePacked(block.timestamp, msg.sender, i))) % 16)); // 16 different values
         }
         return pixelData;
     }
+
 
     // Fast forward time (only for testing)
     function fastForwardTime(uint256 _seconds) public {
