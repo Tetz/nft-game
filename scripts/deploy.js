@@ -8,13 +8,28 @@ async function main() {
 
   // Deploy ERC20 Token contract
   const Token = await ethers.getContractFactory("MyToken");
-  const token = await Token.deploy(1000000);
+  const token = await Token.deploy(ethers.utils.parseUnits("1000000", 18)); // 1,000,000 MTK
   await token.deployed();
   console.log("Token address:", token.address);
 
-  // Deploy CryptoPet contract
+  // Check deployer's balance
+  const deployerBalance = await token.balanceOf(deployer.address);
+  console.log(`Deployer balance: ${ethers.utils.formatUnits(deployerBalance, 18)} MTK`);
+
+  // Transfer tokens to your wallet address
+  const myWalletAddress = "0x59178bAc7A9BBfa287F39887EAA2826666f14A2a";
+  const transferAmount = ethers.utils.parseUnits("1000", 18); // Transfer 1000 MTK
+  const transferTx = await token.transfer(myWalletAddress, transferAmount);
+  await transferTx.wait();
+  console.log(`Transferred ${ethers.utils.formatUnits(transferAmount, 18)} MTK to ${myWalletAddress}`);
+
+  // Check your wallet's balance
+  const myWalletBalance = await token.balanceOf(myWalletAddress);
+  console.log(`My Wallet balance: ${ethers.utils.formatUnits(myWalletBalance, 18)} MTK`);
+
+  // Deploy CryptoPet contract with the token address
   const CryptoPet = await ethers.getContractFactory("CryptoPet");
-  const cryptoPet = await CryptoPet.deploy();
+  const cryptoPet = await CryptoPet.deploy(token.address);
   await cryptoPet.deployed();
   console.log("CryptoPet address:", cryptoPet.address);
 

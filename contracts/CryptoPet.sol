@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 contract CryptoPet {
+    IERC20 public token;
+
     struct Pet {
         string name;
         uint256 level;
@@ -16,8 +20,13 @@ contract CryptoPet {
     event PetFed(address indexed owner, string name, uint256 newLevel, bytes pixelData);
     event PetPlayed(address indexed owner, string name, uint256 newLevel, bytes pixelData);
 
+    constructor(address tokenAddress) {
+        token = IERC20(tokenAddress);
+    }
+
     function createPet(string memory _name) public {
         require(bytes(pets[msg.sender].name).length == 0, "Pet already exists");
+        require(token.transferFrom(msg.sender, address(this), 10 * 10**18), "Token transfer failed");
 
         bytes memory pixelData = generateRandomPixelData();
         pets[msg.sender] = Pet(_name, 1, block.timestamp, block.timestamp, pixelData);
@@ -29,6 +38,7 @@ contract CryptoPet {
 
         Pet storage pet = pets[msg.sender];
         require(block.timestamp >= pet.lastFed + 1 days, "Pet is not hungry yet");
+        require(token.transferFrom(msg.sender, address(this), 5 * 10**18), "Token transfer failed");
 
         pet.level++;
         pet.lastFed = block.timestamp;
@@ -42,6 +52,7 @@ contract CryptoPet {
 
         Pet storage pet = pets[msg.sender];
         require(block.timestamp >= pet.lastPlayed + 1 days, "Pet is not ready to play yet");
+        require(token.transferFrom(msg.sender, address(this), 5 * 10**18), "Token transfer failed");
 
         pet.level++;
         pet.lastPlayed = block.timestamp;

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import Web3 from 'web3';
-import { Container, Button, Form, Card, Row, Col } from 'react-bootstrap';
+import { Container, Button, Form, Card } from 'react-bootstrap';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import contractAddress from '../contracts/contract-address.json';
 import CryptoPetABI from '../contracts/CryptoPet.json';
+import MyTokenABI from '../contracts/MyToken.json';
 
 const pixelSize = 10; // 10x10 pixel grid
 const scale = 10; // scale each pixel to 10x10
@@ -26,7 +27,9 @@ const decodePixelData = (pixelData) => {
 
 export const Dapp = () => {
   const [account, setAccount] = useState('');
-  const [contract, setContract] = useState(null);
+  const [ethBalance, setEthBalance] = useState('');
+  const [petContract, setPetContract] = useState(null);
+  const [tokenContract, setTokenContract] = useState(null);
   const [pet, setPet] = useState(null);
   const [petName, setPetName] = useState('');
   const [petImage, setPetImage] = useState('');
@@ -40,9 +43,21 @@ export const Dapp = () => {
           await window.ethereum.enable();
           const accounts = await web3.eth.getAccounts();
           setAccount(accounts[0]);
-          const contract = new web3.eth.Contract(CryptoPetABI.abi, contractAddress.CryptoPet);
-          setContract(contract);
-          loadPet(contract, accounts[0]);
+
+          const ethBalance = await web3.eth.getBalance(accounts[0]);
+          setEthBalance(web3.utils.fromWei(ethBalance, 'ether'));
+          console.log(`ETH balance: ${web3.utils.fromWei(ethBalance, 'ether')} ETH`);
+
+          const petContract = new web3.eth.Contract(CryptoPetABI.abi, contractAddress.CryptoPet);
+          setPetContract(petContract);
+
+          const tokenContract = new web3.eth.Contract(MyTokenABI.abi, contractAddress.Token);
+          setTokenContract(tokenContract);
+
+          const balance = await tokenContract.methods.balanceOf(accounts[0]).call();
+          console.log(`Account balance: ${web3.utils.fromWei(balance, 'ether')} MTK`);
+
+          loadPet(petContract, accounts[0]);
         } catch (error) {
           console.error('Error loading blockchain data:', error);
           setError('Error loading blockchain data');
@@ -70,13 +85,45 @@ export const Dapp = () => {
     loadBlockchainData();
   }, []);
 
+  const checkEthBalance = async (requiredAmount) => {
+    const web3 = new Web3(window.ethereum);
+    const balance = await web3.eth.getBalance(account);
+    const balanceInEth = web3.utils.fromWei(balance, 'ether');
+    if (parseFloat(balanceInEth) < requiredAmount) {
+      setError(`Insufficient ETH balance. You need at least ${requiredAmount} ETH to perform this action.`);
+      return false;
+    }
+    return true;
+  };
+
+  const sendTransaction = async (txObject) => {
+    const web3 = new Web3(window.ethereum);
+    const gasPrice = await web3.eth.getGasPrice();
+    const gasLimit = 500000; // Adjust based on your contract's needs
+    const nonce = await web3.eth.getTransactionCount(account, 'latest'); // 'pending' might be better in some cases
+
+    return txObject.send({
+      from: account,
+      gasPrice,
+      gas: gasLimit,
+      nonce
+    });
+  };
+
   const createPet = async () => {
     try {
+      const hasEnoughEth = await checkEthBalance(0.01); // Adjust the required amount based on actual gas cost
+      if (!hasEnoughEth) return;
+
+      console.log('Approving tokens for create pet...');
+      const approveTx = await sendTransaction(tokenContract.methods.approve(contractAddress.CryptoPet, Web3.utils.toWei('10', 'ether')));
+      console.log('Approval transaction:', approveTx);
+
       console.log('Creating pet with name:', petName);
-      await contract.methods.createPet(petName).send({ from: account, gas: 500000 });
-      console.log('Pet created');
-      const pet = await contract.methods.getPet().call({ from: account });
-      console.log('Pet loaded after creation:', pet);
+      const createPetTx = await sendTransaction(petContract.methods.createPet(petName));
+      console.log('Create pet transaction:', createPetTx);
+
+      const pet = await petContract.methods.getPet().call({ from: account });
       setPet({
         name: pet.name,
         level: Number(pet.level),
@@ -86,14 +133,24 @@ export const Dapp = () => {
       setPetImage(decodePixelData(pet.pixelData));
     } catch (error) {
       console.error('Error creating pet:', error);
-      setError('Error creating pet');
+      setError('Error creating pet: ' + (error.message || error));
     }
   };
 
   const feedPet = async () => {
     try {
-      await contract.methods.feedPet().send({ from: account, gas: 500000 });
-      const pet = await contract.methods.getPet().call({ from: account });
+      const hasEnoughEth = await checkEthBalance(0.01); // Adjust the required amount based on actual gas cost
+      if (!hasEnoughEth) return;
+
+      console.log('Approving tokens for feed pet...');
+      const approveTx = await sendTransaction(tokenContract.methods.approve(contractAddress.CryptoPet, Web3.utils.toWei('5', 'ether')));
+      console.log('Approval transaction:', approveTx);
+
+      console.log('Feeding pet...');
+      const feedPetTx = await sendTransaction(petContract.methods.feedPet());
+      console.log('Feed pet transaction:', feedPetTx);
+
+      const pet = await petContract.methods.getPet().call({ from: account });
       setPet({
         name: pet.name,
         level: Number(pet.level),
@@ -103,16 +160,24 @@ export const Dapp = () => {
       setPetImage(decodePixelData(pet.pixelData));
     } catch (error) {
       console.error('Error feeding pet:', error);
-      setError('Error feeding pet');
+      setError('Error feeding pet: ' + (error.message || error));
     }
   };
 
   const playWithPet = async () => {
     try {
+      const hasEnoughEth = await checkEthBalance(0.01); // Adjust the required amount based on actual gas cost
+      if (!hasEnoughEth) return;
+
+      console.log('Approving tokens for play with pet...');
+      const approveTx = await sendTransaction(tokenContract.methods.approve(contractAddress.CryptoPet, Web3.utils.toWei('5', 'ether')));
+      console.log('Approval transaction:', approveTx);
+
       console.log('Playing with pet...');
-      await contract.methods.playWithPet().send({ from: account, gas: 500000 });
-      const pet = await contract.methods.getPet().call({ from: account });
-      console.log('Pet after playing:', pet);
+      const playWithPetTx = await sendTransaction(petContract.methods.playWithPet());
+      console.log('Play with pet transaction:', playWithPetTx);
+
+      const pet = await petContract.methods.getPet().call({ from: account });
       setPet({
         name: pet.name,
         level: Number(pet.level),
@@ -122,14 +187,20 @@ export const Dapp = () => {
       setPetImage(decodePixelData(pet.pixelData));
     } catch (error) {
       console.error('Error playing with pet:', error);
-      setError('Error playing with pet');
+      setError('Error playing with pet: ' + (error.message || error));
     }
   };
 
   const fastForwardTime = async () => {
     try {
-      await contract.methods.fastForwardTime(86400).send({ from: account, gas: 500000 }); // Fast forward 24 hours
-      const pet = await contract.methods.getPet().call({ from: account });
+      const hasEnoughEth = await checkEthBalance(0.01); // Adjust the required amount based on actual gas cost
+      if (!hasEnoughEth) return;
+
+      console.log('Fast forwarding time...');
+      const fastForwardTx = await sendTransaction(petContract.methods.fastForwardTime(86400)); // Fast forward 24 hours
+      console.log('Fast forward time transaction:', fastForwardTx);
+
+      const pet = await petContract.methods.getPet().call({ from: account });
       setPet({
         name: pet.name,
         level: Number(pet.level),
@@ -139,7 +210,7 @@ export const Dapp = () => {
       setPetImage(decodePixelData(pet.pixelData));
     } catch (error) {
       console.error('Error fast forwarding time:', error);
-      setError('Error fast forwarding time');
+      setError('Error fast forwarding time: ' + (error.message || error));
     }
   };
 
@@ -147,6 +218,7 @@ export const Dapp = () => {
     <Container>
       <h1 className="text-center">Crypto Virtual Pet Game</h1>
       <p className="text-center">Your account: {account}</p>
+      <p className="text-center">ETH balance: {ethBalance}</p>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {pet ? (
         <Card className="text-center">
